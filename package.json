@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "description": "MindTouch cloud API + admin dashboard (Vercel)",
+  "type": "module",
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "node scripts/serve.mjs",
+    "start": "node scripts/serve.mjs",
     "deploy": "vercel --prod"
   },
   "dependencies": {

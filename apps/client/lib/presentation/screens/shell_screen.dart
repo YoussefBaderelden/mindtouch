@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/services/remote_control_service.dart';
 import '../providers/app_providers.dart';
+import '../providers/auth_provider.dart';
 import 'control_screen.dart';
 import 'settings_screen.dart';
 import 'setup_screen.dart';
@@ -15,13 +19,35 @@ class ShellScreen extends ConsumerStatefulWidget {
   ConsumerState<ShellScreen> createState() => _ShellScreenState();
 }
 
-class _ShellScreenState extends ConsumerState<ShellScreen> {
+class _ShellScreenState extends ConsumerState<ShellScreen>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(remoteControlServiceProvider).connect();
-    });
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapShell());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused && Platform.isAndroid) {
+      ref.read(platformServiceProvider).updateBubbleMessage('Listening in background');
+    }
+  }
+
+  Future<void> _bootstrapShell() async {
+    ref.read(remoteControlServiceProvider).connect();
+    if (!Platform.isAndroid) return;
+
+    final platform = ref.read(platformServiceProvider);
+    await platform.startBackgroundService();
+    await platform.showFloatingBubble('MindTouch active');
   }
 
   @override
@@ -79,8 +105,8 @@ class _MindTouchNavBar extends StatelessWidget {
                 onTap: () => onTap(1),
               ),
               _NavItem(
-                icon: Icons.settings_rounded,
-                label: 'Settings',
+                icon: Icons.person_rounded,
+                label: 'Profile',
                 selected: currentIndex == 2,
                 onTap: () => onTap(2),
               ),

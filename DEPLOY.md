@@ -71,9 +71,25 @@ npx vercel dev
 |-----|---------|
 | `/admin` | Web dashboard |
 | `/api/health` | Health check |
+| `/api/auth/register` | Create account + register device |
+| `/api/auth/login` | Sign in + register device |
+| `/api/auth/me` | Current user (Bearer token) |
 | `/api/phone/poll?device_id=` | Phone polls for commands |
 | `/api/phone/command` | Admin sends action |
 | `/api/phone/direction` | Admin sends AI direction |
+
+## Documentation
+
+| Doc | Link |
+|-----|------|
+| README | https://github.com/YoussefBaderelden/mindtouch |
+| Deploy guide | https://github.com/YoussefBaderelden/mindtouch/blob/main/DEPLOY.md |
+| Architecture | https://github.com/YoussefBaderelden/mindtouch/blob/main/docs/ARCHITECTURE.md |
+
+## One-click cloud deploy
+
+- **Vercel:** https://vercel.com/new/clone?repository-url=https://github.com/YoussefBaderelden/mindtouch
+- **Render:** https://render.com/deploy?repo=https://github.com/YoussefBaderelden/mindtouch
 
 ## Docker backend (optional local)
 

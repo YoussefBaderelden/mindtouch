@@ -18,6 +18,7 @@ import {
   dequeueCommand,
   isUsingMemoryStore,
 } from '../api/_lib/store.js';
+import { registerUser, loginUser, getUserFromToken, listUsers } from '../api/_lib/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -35,6 +36,45 @@ async function handleApi(req, res, url) {
     res.writeHead(200);
     res.end();
     return;
+  }
+
+  if (url.pathname === '/api/auth/register' && req.method === 'POST') {
+    const body = await readBody(req);
+    const result = registerUser(body);
+    if (result.error) return json(res, result.status, { error: result.error });
+    return json(res, 200, result.data);
+  }
+
+  if (url.pathname === '/api/auth/login' && req.method === 'POST') {
+    const body = await readBody(req);
+    const result = loginUser(body);
+    if (result.error) return json(res, result.status, { error: result.error });
+    return json(res, 200, result.data);
+  }
+
+  if (url.pathname === '/api/auth/me' && req.method === 'GET') {
+    const token = req.headers.authorization || req.headers.Authorization || '';
+    const user = getUserFromToken(token);
+    if (!user) return json(res, 401, { error: 'Unauthorized' });
+    return json(res, 200, { user });
+  }
+
+  if (url.pathname === '/api/auth/users' && req.method === 'GET') {
+    return json(res, 200, { users: listUsers() });
+  }
+
+  // v1 auth aliases (Docker / legacy clients)
+  if (url.pathname === '/v1/auth/register' && req.method === 'POST') {
+    url.pathname = '/api/auth/register';
+    return handleApi(req, res, url);
+  }
+  if (url.pathname === '/v1/auth/login' && req.method === 'POST') {
+    url.pathname = '/api/auth/login';
+    return handleApi(req, res, url);
+  }
+  if (url.pathname === '/v1/auth/me' && req.method === 'GET') {
+    url.pathname = '/api/auth/me';
+    return handleApi(req, res, url);
   }
 
   if (url.pathname === '/api/health' || url.pathname === '/health') {
@@ -145,4 +185,5 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`MindTouch live at http://localhost:${PORT}`);
   console.log(`Admin dashboard: http://localhost:${PORT}/admin`);
   console.log(`API health: http://localhost:${PORT}/api/health`);
+  console.log(`Auth: POST /api/auth/register · POST /api/auth/login · GET /api/auth/me`);
 });

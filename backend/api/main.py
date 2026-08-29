@@ -8,13 +8,14 @@ from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
 
 from phone_control import DIRECTIONS, router as phone_router
+from auth_store import get_user_from_token, login_user, register_user
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -55,19 +56,22 @@ class HealthResponse(BaseModel):
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
-    phone: str | None = None
+    password: str = Field(min_length=6)
+    display_name: str | None = None
+    device: dict | None = None
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    device: dict | None = None
 
 
-class TokenResponse(BaseModel):
+class AuthResponse(BaseModel):
     access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
+    user_id: str
+    email: str
+    display_name: str
 
 
 class DeviceRegisterRequest(BaseModel):
@@ -125,20 +129,31 @@ async def admin_dashboard():
     return {"message": "Admin dashboard not found. Build static/admin/index.html"}
 
 
-@app.post("/v1/auth/register", response_model=TokenResponse)
+@app.post("/v1/auth/register", response_model=AuthResponse)
+@app.post("/api/auth/register", response_model=AuthResponse)
 async def register(body: RegisterRequest):
-    return TokenResponse(
-        access_token=f"mt_access_{uuid4().hex}",
-        refresh_token=f"mt_refresh_{uuid4().hex}",
-    )
+    data, err = register_user(body.model_dump())
+    if err:
+        raise HTTPException(status_code=err["status"], detail=err["error"])
+    return AuthResponse(**data)
 
 
-@app.post("/v1/auth/login", response_model=TokenResponse)
+@app.post("/v1/auth/login", response_model=AuthResponse)
+@app.post("/api/auth/login", response_model=AuthResponse)
 async def login(body: LoginRequest):
-    return TokenResponse(
-        access_token=f"mt_access_{uuid4().hex}",
-        refresh_token=f"mt_refresh_{uuid4().hex}",
-    )
+    data, err = login_user(body.model_dump())
+    if err:
+        raise HTTPException(status_code=err["status"], detail=err["error"])
+    return AuthResponse(**data)
+
+
+@app.get("/api/auth/me")
+@app.get("/v1/auth/me")
+async def auth_me(authorization: str | None = Header(default=None)):
+    user = get_user_from_token(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return {"user": user}
 
 
 @app.get("/v1/devices")

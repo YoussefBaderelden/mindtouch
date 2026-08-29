@@ -10,6 +10,7 @@ import '../../domain/navigation/phone_action_registry.dart';
 import '../../domain/services/action_pipeline.dart';
 import '../../platform/phone_control_platform.dart';
 import '../../platform/phone_control_service.dart';
+import '../providers/auth_provider.dart';
 
 class PhoneExecutionLog {
   const PhoneExecutionLog({
@@ -157,6 +158,9 @@ class PhoneControlNotifier extends Notifier<PhoneControlState> {
       isExecuting: false,
       pendingActions: (state.pendingActions - 1).clamp(0, 999),
     );
+
+    final bubbleMsg = success ? '${action.label} ✓' : '${action.label} failed';
+    unawaited(ref.read(platformServiceProvider).updateBubbleMessage(bubbleMsg));
 
     return success;
   }

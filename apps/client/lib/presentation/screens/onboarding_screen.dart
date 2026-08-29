@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glow_container.dart';
@@ -73,12 +72,11 @@ class OnboardingScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       if (step < 3) {
                         ref.read(_onboardingStepProvider.notifier).state++;
                       } else {
-                        ref.read(onboardingCompleteProvider.notifier).state = true;
-                        context.go('/');
+                        await markOnboardingComplete(ref);
                       }
                     },
                     child: Text(step < 3 ? 'Continue' : 'Begin Calibration'),

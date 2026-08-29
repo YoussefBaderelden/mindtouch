@@ -23,6 +23,12 @@
     { "source": "/v1/phone/command", "destination": "/api/phone/command" },
     { "source": "/v1/phone/direction", "destination": "/api/phone/direction" },
     { "source": "/v1/phone/ack", "destination": "/api/phone/ack" },
-    { "source": "/v1/phone/logs", "destination": "/api/phone/logs" }
+    { "source": "/v1/phone/logs", "destination": "/api/phone/logs" },
+    { "source": "/v1/auth/register", "destination": "/api/auth/register" },
+    { "source": "/v1/auth/login", "destination": "/api/auth/login" },
+    { "source": "/v1/auth/me", "destination": "/api/auth/me" },
+    { "source": "/api/auth/register", "destination": "/api/auth/register" },
+    { "source": "/api/auth/login", "destination": "/api/auth/login" },
+    { "source": "/api/auth/me", "destination": "/api/auth/me" }
   ]
 }

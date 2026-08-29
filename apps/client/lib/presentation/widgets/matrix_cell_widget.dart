@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_animate/flutter_animate.dart' hide Direction;
 
 import '../../domain/models/matrix_cell.dart';
 import '../../core/theme/app_colors.dart';
@@ -11,11 +11,13 @@ class MatrixCellWidget extends StatelessWidget {
     required this.cell,
     required this.selected,
     required this.onTap,
+    this.compact = false,
   });
 
   final MatrixCell cell;
   final bool selected;
   final VoidCallback onTap;
+  final bool compact;
 
   Color get _accent {
     if (cell.accentColor != null) return cell.accentColor!;
@@ -29,7 +31,62 @@ class MatrixCellWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (compact) return _buildCompact(context);
+    return _buildFull(context);
+  }
+
+  Widget _buildCompact(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: onTap,
+        child: GlowContainer(
+          active: selected,
+          glowColor: _accent,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          borderRadius: 18,
+          child: Row(
+            children: [
+              _IconBadge(
+                accent: _accent,
+                selected: selected,
+                icon: cell.icon,
+                size: 28,
+                iconSize: 18,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  cell.label,
+                  style: textTheme.labelLarge?.copyWith(
+                    color: selected
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (selected)
+                Icon(
+                  Icons.radio_button_checked_rounded,
+                  color: _accent,
+                  size: 16,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFull(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    const padding = 18.0;
+    const iconSize = 44.0;
 
     return RepaintBoundary(
       child: GestureDetector(
@@ -41,37 +98,26 @@ class MatrixCellWidget extends StatelessWidget {
           child: GlowContainer(
             active: selected,
             glowColor: _accent,
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(padding),
             borderRadius: 24,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        gradient: LinearGradient(
-                          colors: [
-                            _accent.withValues(alpha: 0.25),
-                            _accent.withValues(alpha: 0.08),
-                          ],
-                        ),
-                        border: Border.all(
-                          color: _accent.withValues(alpha: selected ? 0.6 : 0.25),
-                        ),
-                      ),
-                      child: Icon(cell.icon, color: _accent, size: 24),
+                    _IconBadge(
+                      accent: _accent,
+                      selected: selected,
+                      icon: cell.icon,
+                      size: iconSize,
+                      iconSize: 24,
                     ),
                     const Spacer(),
                     if (selected)
                       Icon(
                         Icons.radio_button_checked_rounded,
                         color: _accent,
-                        size: 20,
+                        size: 18,
                       )
                           .animate()
                           .fadeIn(duration: 200.ms)
@@ -82,15 +128,19 @@ class MatrixCellWidget extends StatelessWidget {
                 Text(
                   cell.label,
                   style: textTheme.titleLarge?.copyWith(
-                    color: selected ? AppColors.textPrimary : AppColors.textSecondary,
+                    color: selected
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
                     fontWeight: FontWeight.w800,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   cell.subtitle,
                   style: textTheme.bodySmall,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -98,6 +148,43 @@ class MatrixCellWidget extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _IconBadge extends StatelessWidget {
+  const _IconBadge({
+    required this.accent,
+    required this.selected,
+    required this.icon,
+    required this.size,
+    required this.iconSize,
+  });
+
+  final Color accent;
+  final bool selected;
+  final IconData icon;
+  final double size;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: [
+            accent.withValues(alpha: 0.25),
+            accent.withValues(alpha: 0.08),
+          ],
+        ),
+        border: Border.all(
+          color: accent.withValues(alpha: selected ? 0.6 : 0.25),
+        ),
+      ),
+      child: Icon(icon, color: accent, size: iconSize),
     );
   }
 }

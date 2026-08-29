@@ -1,145 +1,170 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/widgets/glow_container.dart';
+import '../../platform/platform_service.dart';
+import '../providers/app_providers.dart';
+import '../providers/auth_provider.dart';
+import '../providers/phone_control_provider.dart';
 import '../widgets/mind_touch_scaffold.dart';
+import '../widgets/profile/profile_widgets.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  DeviceProfile? _device;
+  Map<String, dynamic> _permissions = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final platform = ref.read(platformServiceProvider);
+    final profile = await platform.getDeviceProfile();
+    final status = await platform.getPermissionStatus();
+    if (mounted) {
+      setState(() {
+        _device = profile;
+        _permissions = status;
+      });
+    }
+  }
+
+  Future<void> _logout() async {
+    await ref.read(authProvider.notifier).logout();
+    await resetAppFlow(ref);
+    if (mounted) context.go('/login');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = ref.watch(authProvider);
+    final phone = ref.watch(phoneControlProvider);
+    final user = auth.user;
+    final device = _device;
+
+    final a11y = _permissions['accessibility'] == true || phone.accessibilityEnabled;
+    final background = _permissions['background_service'] == true;
+
     return MindTouchScaffold(
-      title: 'Settings',
-      subtitle: 'Caregiver & device configuration',
+      title: 'Profile',
+      subtitle: 'Your account, device & assistive control',
       body: ListView(
         children: [
-          _SettingsSection(
-            title: 'Hardware',
+          ProfileHeroCard(
+            displayName: user?.displayName ?? 'MindTouch User',
+            email: user?.email ?? 'Not signed in',
+            subtitle: 'NEURAL ASSISTIVE PROFILE',
+          ),
+          const SizedBox(height: 14),
+          Row(
             children: [
-              _SettingsTile(
-                icon: Icons.bluetooth_connected_rounded,
-                title: 'MindTouch Cap',
-                subtitle: 'MT-CAP-0042 · Connected',
-                trailing: Icons.chevron_right_rounded,
+              ProfileStatChip(
+                icon: Icons.accessibility_new_rounded,
+                label: 'Accessibility',
+                value: a11y ? 'Active' : 'Off',
+                active: a11y,
               ),
-              _SettingsTile(
-                icon: Icons.tune_rounded,
-                title: 'Recalibrate',
-                subtitle: 'Last calibrated 3 days ago',
-                trailing: Icons.chevron_right_rounded,
+              const SizedBox(width: 10),
+              ProfileStatChip(
+                icon: Icons.podcasts_rounded,
+                label: 'Background',
+                value: background ? 'Listening' : 'Stopped',
+                active: background,
+              ),
+              const SizedBox(width: 10),
+              ProfileStatChip(
+                icon: Icons.link_rounded,
+                label: 'Admin',
+                value: phone.remoteConnected ? 'Linked' : 'Local',
+                active: phone.remoteConnected,
               ),
             ],
           ),
-          _SettingsSection(
-            title: 'Caregivers',
-            children: [
-              _SettingsTile(
-                icon: Icons.person_add_rounded,
-                title: 'Add Caregiver',
-                subtitle: 'Invite via email or SMS',
-                trailing: Icons.chevron_right_rounded,
-              ),
-              _SettingsTile(
-                icon: Icons.security_rounded,
-                title: 'Consent Scopes',
-                subtitle: 'SOS alerts · Reminders',
-                trailing: Icons.chevron_right_rounded,
-              ),
-            ],
-          ),
-          _SettingsSection(
-            title: 'Smart Home',
-            children: [
-              _SettingsTile(
-                icon: Icons.home_work_rounded,
-                title: 'Home Assistant',
-                subtitle: 'http://homeassistant.local:8123',
-                trailing: Icons.chevron_right_rounded,
-              ),
-            ],
-          ),
-          _SettingsSection(
-            title: 'Privacy',
-            children: [
-              _SettingsTile(
-                icon: Icons.cloud_off_rounded,
-                title: 'Cloud EEG Backup',
-                subtitle: 'Off — data stays on device',
-                trailing: Switch(value: false, onChanged: (_) {}),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsSection extends StatelessWidget {
-  const _SettingsSection({required this.title, required this.children});
-
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 10),
-            child: Text(
-              title.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.textMuted,
-                    letterSpacing: 1.5,
-                  ),
+          const SizedBox(height: 22),
+          if (device != null) ...[
+            const ProfileSectionHeader(title: 'This device'),
+            ProfileSectionCard(
+              children: [
+                ProfileActionTile(
+                  icon: Icons.phone_android_rounded,
+                  title: device.model,
+                  subtitle: '${device.platform.toUpperCase()} · ${device.osVersion}',
+                  accent: AppColors.primary,
+                ),
+                ProfileActionTile(
+                  icon: Icons.business_rounded,
+                  title: device.manufacturer,
+                  subtitle: 'ID ${device.deviceId}',
+                  accent: AppColors.secondary,
+                ),
+              ],
             ),
+          ],
+          const ProfileSectionHeader(title: 'Control & safety'),
+          ProfileSectionCard(
+            children: [
+              ProfileActionTile(
+                icon: Icons.bubble_chart_rounded,
+                title: 'Floating bubble',
+                subtitle: 'Show status while using other apps',
+                accent: AppColors.tertiary,
+                onTap: () => ref
+                    .read(platformServiceProvider)
+                    .showFloatingBubble('MindTouch active'),
+              ),
+              ProfileActionTile(
+                icon: Icons.verified_user_outlined,
+                title: 'Permissions',
+                subtitle: 'Accessibility, overlay & battery setup',
+                accent: AppColors.confirm,
+                onTap: () => context.go('/permissions'),
+              ),
+            ],
           ),
-          GlowContainer(
-            padding: EdgeInsets.zero,
-            child: Column(children: children),
+          const ProfileSectionHeader(title: 'Connection'),
+          ProfileSectionCard(
+            children: [
+              ProfileActionTile(
+                icon: Icons.cloud_outlined,
+                title: 'Cloud API',
+                subtitle: AppConfig.apiBase.isEmpty
+                    ? 'Local development server'
+                    : AppConfig.apiBase,
+                accent: AppColors.primary,
+              ),
+            ],
           ),
+          const ProfileSectionHeader(title: 'Account'),
+          ProfileSectionCard(
+            children: [
+              ProfileActionTile(
+                icon: Icons.logout_rounded,
+                title: 'Sign out',
+                subtitle: 'Clear session on this phone',
+                accent: AppColors.danger,
+                onTap: _logout,
+                trailing: const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: AppColors.danger,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
         ],
       ),
-    );
-  }
-}
-
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.trailing,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final dynamic trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: AppColors.primary.withValues(alpha: 0.1),
-        ),
-        child: Icon(icon, color: AppColors.primary, size: 20),
-      ),
-      title: Text(title, style: Theme.of(context).textTheme.titleMedium),
-      subtitle: Text(subtitle),
-      trailing: trailing is IconData
-          ? Icon(trailing as IconData, color: AppColors.textMuted)
-          : trailing,
     );
   }
 }

@@ -17,31 +17,27 @@ class MatrixGrid extends StatelessWidget {
   final ValueChanged<int> onCellTap;
   final int crossAxisCount;
 
+  static const _spacing = 12.0;
+  static const _minCellHeight = 72.0;
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const spacing = 14.0;
-        final rows = (cells.length / crossAxisCount).ceil();
-        final cellHeight =
-            (constraints.maxHeight - spacing * (rows - 1)) / rows;
-
-        return GridView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: spacing,
-            mainAxisSpacing: spacing,
-            mainAxisExtent: cellHeight.clamp(120, 220),
-          ),
-          itemCount: cells.length,
-          itemBuilder: (context, index) {
-            return MatrixCellWidget(
-              cell: cells[index],
-              selected: index == selectedIndex,
-              onTap: () => onCellTap(index),
-            );
-          },
+    return GridView.builder(
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.zero,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: _spacing,
+        mainAxisSpacing: _spacing,
+        mainAxisExtent: _minCellHeight,
+      ),
+      itemCount: cells.length,
+      itemBuilder: (context, index) {
+        return MatrixCellWidget(
+          cell: cells[index],
+          selected: index == selectedIndex,
+          compact: true,
+          onTap: () => onCellTap(index),
         );
       },
     );

@@ -1,4 +1,5 @@
 import 'cloud_urls.dart';
+import 'api_endpoint.dart';
 
 /// Central performance & stability tuning — single source of truth.
 abstract final class AppConfig {
@@ -21,10 +22,7 @@ abstract final class AppConfig {
 
   static const localApiBase = 'http://10.0.2.2:3000';
 
-  static String get apiBase {
-    if (useLocalApi) return localApiBase;
-    return CloudUrls.apiBase;
-  }
+  static String get apiBase => ApiEndpoint.base;
 
   static String get phoneApiPrefix => '/api/phone';
 

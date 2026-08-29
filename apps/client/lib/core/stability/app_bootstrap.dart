@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../config/api_endpoint.dart';
+
 /// Global crash guards + performance hooks applied at startup.
 abstract final class AppBootstrap {
-  static void initialize() {
+  static Future<void> initialize() async {
     WidgetsFlutterBinding.ensureInitialized();
 
     FlutterError.onError = (details) {
@@ -19,5 +21,10 @@ abstract final class AppBootstrap {
       }
       return true;
     };
+
+    await ApiEndpoint.initialize();
+    if (kDebugMode) {
+      debugPrint('[MindTouch] API → ${ApiEndpoint.base} (cloud=${ApiEndpoint.isCloud})');
+    }
   }
 }

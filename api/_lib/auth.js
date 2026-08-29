@@ -1,15 +1,8 @@
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { kvGetJson, kvSetJson } from './kv.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const STORE_PATH = path.join(__dirname, '..', '..', '.mindtouch-auth.json');
-
-/** @type {Map<string, object>} */
-const users = new Map();
-/** @type {Map<string, object>} */
-const sessions = new Map();
+const USERS_KEY = 'auth:users';
+const SESSIONS_KEY = 'auth:sessions';
 
 function hashPassword(password) {
   return crypto.createHash('sha256').update(`mt:${password}`).digest('hex');
@@ -28,38 +21,20 @@ function normalizeBody(body = {}) {
   };
 }
 
-function loadStore() {
-  try {
-    if (!fs.existsSync(STORE_PATH)) return;
-    const raw = JSON.parse(fs.readFileSync(STORE_PATH, 'utf8'));
-    for (const [key, value] of Object.entries(raw.users || {})) {
-      users.set(key, value);
-    }
-    for (const [key, value] of Object.entries(raw.sessions || {})) {
-      sessions.set(key, value);
-    }
-    console.log(`[MindTouch Auth] Loaded ${users.size} users from disk`);
-  } catch (err) {
-    console.warn('[MindTouch Auth] Could not load store:', err.message);
-  }
+async function loadUsers() {
+  return (await kvGetJson(USERS_KEY)) || {};
 }
 
-function saveStore() {
-  try {
-    fs.writeFileSync(
-      STORE_PATH,
-      JSON.stringify(
-        {
-          users: Object.fromEntries(users),
-          sessions: Object.fromEntries(sessions),
-        },
-        null,
-        2,
-      ),
-    );
-  } catch (err) {
-    console.warn('[MindTouch Auth] Could not save store:', err.message);
-  }
+async function saveUsers(users) {
+  await kvSetJson(USERS_KEY, users);
+}
+
+async function loadSessions() {
+  return (await kvGetJson(SESSIONS_KEY)) || {};
+}
+
+async function saveSessions(sessions) {
+  await kvSetJson(SESSIONS_KEY, sessions);
 }
 
 function attachDevice(user, device) {
@@ -71,15 +46,15 @@ function attachDevice(user, device) {
   else user.devices.push(entry);
 }
 
-loadStore();
-
-export function registerUser(body) {
+export async function registerUser(body) {
   const { email, password, displayName, device } = normalizeBody(body);
   const key = (email || '').trim().toLowerCase();
   if (!key || !password || password.length < 6) {
     return { error: 'Email and password (6+ chars) required', status: 400 };
   }
-  if (users.has(key)) {
+
+  const users = await loadUsers();
+  if (users[key]) {
     return { error: 'Account already exists', status: 409 };
   }
 
@@ -93,11 +68,14 @@ export function registerUser(body) {
     created_at: new Date().toISOString(),
   };
   attachDevice(user, device);
-  users.set(key, user);
+  users[key] = user;
 
   const accessToken = newToken();
-  sessions.set(accessToken, { user_id: userId, email: key });
-  saveStore();
+  const sessions = await loadSessions();
+  sessions[accessToken] = { user_id: userId, email: key };
+
+  await saveUsers(users);
+  await saveSessions(sessions);
 
   return {
     status: 200,
@@ -110,20 +88,25 @@ export function registerUser(body) {
   };
 }
 
-export function loginUser(body) {
+export async function loginUser(body) {
   const { email, password, device } = normalizeBody(body);
   const key = (email || '').trim().toLowerCase();
-  const user = users.get(key);
+  const users = await loadUsers();
+  const user = users[key];
+
   if (!user || user.password_hash !== hashPassword(password)) {
     return { error: 'Invalid email or password', status: 401 };
   }
 
   attachDevice(user, device);
-  users.set(key, user);
+  users[key] = user;
 
   const accessToken = newToken();
-  sessions.set(accessToken, { user_id: user.user_id, email: key });
-  saveStore();
+  const sessions = await loadSessions();
+  sessions[accessToken] = { user_id: user.user_id, email: key };
+
+  await saveUsers(users);
+  await saveSessions(sessions);
 
   return {
     status: 200,
@@ -136,12 +119,17 @@ export function loginUser(body) {
   };
 }
 
-export function getUserFromToken(token) {
+export async function getUserFromToken(token) {
   if (!token) return null;
-  const session = sessions.get(token.replace(/^Bearer\s+/i, ''));
+  const clean = token.replace(/^Bearer\s+/i, '');
+  const sessions = await loadSessions();
+  const session = sessions[clean];
   if (!session) return null;
-  const user = users.get(session.email);
+
+  const users = await loadUsers();
+  const user = users[session.email];
   if (!user) return null;
+
   return {
     user_id: user.user_id,
     email: user.email,
@@ -151,13 +139,15 @@ export function getUserFromToken(token) {
   };
 }
 
-export function validateToken(token) {
+export async function validateToken(token) {
   if (!token) return null;
-  return sessions.get(token.replace(/^Bearer\s+/i, '')) || null;
+  const sessions = await loadSessions();
+  return sessions[token.replace(/^Bearer\s+/i, '')] || null;
 }
 
-export function listUsers() {
-  return [...users.values()].map((u) => ({
+export async function listUsers() {
+  const users = await loadUsers();
+  return Object.values(users).map((u) => ({
     user_id: u.user_id,
     email: u.email,
     display_name: u.display_name,

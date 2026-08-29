@@ -1,4 +1,4 @@
-import { cors, readBody } from '../_lib/cors.js';
+import { cors } from '../_lib/cors.js';
 import { getUserFromToken } from '../_lib/auth.js';
 
 export default async function handler(req, res) {
@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return;
   }
   const auth = req.headers.authorization || req.headers.Authorization || '';
-  const user = getUserFromToken(auth);
+  const user = await getUserFromToken(auth);
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' });
     return;

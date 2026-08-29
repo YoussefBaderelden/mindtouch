@@ -1,46 +1,29 @@
-# MindTouch — Run the app (one command)
+# MindTouch — Run the app (cloud Vercel by default)
 
-Everything is configured. You only need to run the script below.
+The mobile app connects to **Vercel** automatically. No local server needed.
 
-## Quick start (recommended)
+## Run the app
 
-```powershell
-cd "e:\flutter in AS\mindtouch"
-.\scripts\run-app.ps1
-```
-
-This will:
-1. Start the API server on port **3000** (if not already running)
-2. Launch the Flutter app on your Android emulator or device
-3. Connect the app to `http://10.0.2.2:3000` automatically
-
-## Manual (if you prefer)
-
-**Terminal 1 — API:**
-```powershell
-cd "e:\flutter in AS\mindtouch"
-npm start
-```
-
-**Terminal 2 — App:**
 ```powershell
 cd "e:\flutter in AS\mindtouch\apps\client"
 flutter run -d emulator-5554
 ```
 
-No `--dart-define` needed — the app defaults to the local API.
+## Deploy backend to Vercel (one-time)
 
-## Cloud (production)
+See **[VERCEL.md](VERCEL.md)** — login once, run `.\scripts\deploy-vercel.ps1`.
 
-Deploy once, then run with your URL:
+## Local dev (optional)
 
 ```powershell
-flutter run --dart-define=MINDTOUCH_API=https://YOUR-PROJECT.vercel.app
-```
+# Terminal 1
+cd "e:\flutter in AS\mindtouch"
+npm start
 
-Deploy links:
-- [Vercel one-click](https://vercel.com/new/clone?repository-url=https://github.com/YoussefBaderelden/mindtouch)
-- [Render one-click](https://render.com/deploy?repo=https://github.com/YoussefBaderelden/mindtouch)
+# Terminal 2
+cd apps/client
+flutter run --dart-define=MINDTOUCH_LOCAL=true
+```
 
 ## After the app opens
 

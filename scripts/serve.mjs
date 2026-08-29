@@ -40,27 +40,27 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === '/api/auth/register' && req.method === 'POST') {
     const body = await readBody(req);
-    const result = registerUser(body);
+    const result = await registerUser(body);
     if (result.error) return json(res, result.status, { error: result.error });
     return json(res, 200, result.data);
   }
 
   if (url.pathname === '/api/auth/login' && req.method === 'POST') {
     const body = await readBody(req);
-    const result = loginUser(body);
+    const result = await loginUser(body);
     if (result.error) return json(res, result.status, { error: result.error });
     return json(res, 200, result.data);
   }
 
   if (url.pathname === '/api/auth/me' && req.method === 'GET') {
     const token = req.headers.authorization || req.headers.Authorization || '';
-    const user = getUserFromToken(token);
+    const user = await getUserFromToken(token);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
     return json(res, 200, { user });
   }
 
   if (url.pathname === '/api/auth/users' && req.method === 'GET') {
-    return json(res, 200, { users: listUsers() });
+    return json(res, 200, { users: await listUsers() });
   }
 
   // v1 auth aliases (Docker / legacy clients)

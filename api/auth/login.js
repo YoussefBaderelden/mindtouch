@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return;
   }
   const body = await readBody(req);
-  const result = loginUser(body);
+  const result = await loginUser(body);
   if (result.error) {
     res.status(result.status).json({ error: result.error });
     return;

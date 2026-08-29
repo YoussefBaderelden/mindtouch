@@ -23,7 +23,16 @@ mindtouch/
 └── infra/                Docker Compose (Postgres, Timescale, Redis, API)
 ```
 
-## Quick Start — Flutter App
+## Quick Start — Run everything
+
+See **[RUN.md](RUN.md)** — one command starts API + app.
+
+```powershell
+cd "e:\flutter in AS\mindtouch"
+.\scripts\run-app.ps1
+```
+
+## Quick Start — Flutter App only
 
 ```bash
 cd apps/client

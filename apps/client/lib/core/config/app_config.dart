@@ -14,18 +14,22 @@ abstract final class AppConfig {
   static const wsReconnectMaxMs = 30000;
 
   /// Cloud API base URL — set via: flutter run --dart-define=MINDTOUCH_API=https://xxx.vercel.app
+  /// When empty, the app uses the local Node API at 10.0.2.2:3000 (started by scripts/run-app.ps1).
   static const cloudApiBase = String.fromEnvironment(
     'MINDTOUCH_API',
     defaultValue: '',
   );
 
-  /// Use cloud polling when MINDTOUCH_API is set, else local emulator Docker.
+  /// Default local API (npm start) — Android emulator loopback.
+  static const localApiBase = 'http://10.0.2.2:3000';
+
+  /// Use cloud polling when MINDTOUCH_API is set, else local npm server.
   static String get apiBase {
-    if (cloudApiBase.isNotEmpty) return cloudApiBase;
-    return 'http://10.0.2.2:8080';
+    if (cloudApiBase.isNotEmpty) return cloudApiBase.replaceAll(RegExp(r'/$'), '');
+    return localApiBase;
   }
 
-  static String get phoneApiPrefix => useCloudApi ? '/api/phone' : '/v1/phone';
+  static String get phoneApiPrefix => '/api/phone';
 
   static bool get useCloudApi => cloudApiBase.isNotEmpty;
 

@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import '../../core/config/app_config.dart';
 import '../../domain/models/phone_action.dart';
+import '../../presentation/providers/auth_provider.dart';
 import '../../presentation/providers/phone_control_provider.dart';
 
 /// Cloud + local remote control — HTTP polling for Vercel, WebSocket for Docker.
@@ -49,11 +50,21 @@ class RemoteControlService {
     _startCloudPolling(base);
   }
 
+  Map<String, String> _headers({bool json = false}) {
+    final headers = <String, String>{};
+    if (json) headers['Content-Type'] = 'application/json';
+    final token = ref.read(authProvider).user?.accessToken;
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
   Future<void> _registerPhone(String base, String deviceId) async {
     try {
       await http.post(
         Uri.parse('${AppConfig.apiBase}${AppConfig.phoneApiPrefix}/register'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(json: true),
         body: jsonEncode({
           'device_id': deviceId,
           'name': 'MindTouch Phone',
@@ -73,7 +84,7 @@ class RemoteControlService {
         'device_id': deviceId,
         'name': 'MindTouch Phone',
       });
-      final res = await http.get(uri).timeout(const Duration(seconds: 8));
+      final res = await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 8));
       if (res.statusCode == 200) {
         ref.read(phoneControlProvider.notifier).setRemoteConnected(true);
         final data = jsonDecode(res.body) as Map<String, dynamic>;
@@ -113,7 +124,7 @@ class RemoteControlService {
     try {
       await http.post(
         Uri.parse('${AppConfig.apiBase}${AppConfig.phoneApiPrefix}/ack'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(json: true),
         body: jsonEncode({
           'device_id': deviceId,
           'command_id': commandId,

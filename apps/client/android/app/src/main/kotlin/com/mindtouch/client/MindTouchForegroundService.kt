@@ -24,9 +24,11 @@ class MindTouchForegroundService : Service() {
         var isRunning = false
             private set
 
-        fun start(context: Context) {
+        fun start(context: Context, apiBase: String? = null, deviceId: String? = null) {
             val intent = Intent(context, MindTouchForegroundService::class.java).apply {
                 action = ACTION_START
+                if (!apiBase.isNullOrBlank()) putExtra("api_base", apiBase)
+                if (!deviceId.isNullOrBlank()) putExtra("device_id", deviceId)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -59,7 +61,13 @@ class MindTouchForegroundService : Service() {
             return START_NOT_STICKY
         }
         isRunning = true
-        val notification = buildNotification("Listening for neural commands")
+        val apiBase = intent?.getStringExtra("api_base")
+        val deviceId = intent?.getStringExtra("device_id")
+        if (!apiBase.isNullOrBlank() && !deviceId.isNullOrBlank()) {
+            RemoteCommandPoller.configure(this, apiBase, deviceId)
+        }
+        RemoteCommandPoller.start(this)
+        val notification = buildNotification("Listening for remote commands")
         startForeground(NOTIFICATION_ID, notification)
         FloatingBubbleService.show(this, "MindTouch active")
         return START_STICKY
@@ -67,6 +75,7 @@ class MindTouchForegroundService : Service() {
 
     override fun onDestroy() {
         isRunning = false
+        RemoteCommandPoller.stop()
         FloatingBubbleService.hide(this)
         super.onDestroy()
     }

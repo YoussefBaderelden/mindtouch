@@ -17,6 +17,8 @@ import {
   getLogs,
   dequeueCommand,
   isUsingMemoryStore,
+  setTypingPreview,
+  getTypingPreview,
 } from '../api/_lib/store.js';
 import { registerUser, loginUser, getUserFromToken, listUsers } from '../api/_lib/auth.js';
 
@@ -123,6 +125,37 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const result = await sendCommand(body.action, body.device_id, body.text, 'admin');
     return json(res, result.status === 'error' ? 404 : 200, result);
+  }
+
+  if (url.pathname === '/api/phone/exit' && req.method === 'POST') {
+    const body = await readBody(req);
+    const result = await sendCommand('exit_app', body.device_id, null, 'admin:exit');
+    return json(res, result.status === 'error' ? 404 : 200, result);
+  }
+
+  if (url.pathname === '/api/phone/type' && req.method === 'POST') {
+    const body = await readBody(req);
+    const text = String(body.text ?? '');
+    if (!text.trim()) return json(res, 400, { error: 'text required' });
+    await setTypingPreview(body.device_id, '');
+    await sendCommand('show_keyboard', body.device_id, null, 'chat:focus');
+    const result = await sendCommand('type_message', body.device_id, text, 'chat:type');
+    return json(res, result.status === 'error' ? 404 : 200, { ...result, text_length: text.length });
+  }
+
+  if (url.pathname === '/api/phone/typing') {
+    if (req.method === 'GET') {
+      const deviceId = url.searchParams.get('device_id');
+      if (!deviceId) return json(res, 400, { error: 'device_id required' });
+      const preview = await getTypingPreview(deviceId);
+      return json(res, 200, { preview });
+    }
+    if (req.method === 'POST') {
+      const body = await readBody(req);
+      if (!body.device_id) return json(res, 400, { error: 'device_id required' });
+      await setTypingPreview(body.device_id, body.preview ?? '');
+      return json(res, 200, { status: 'ok' });
+    }
   }
 
   if (url.pathname === '/api/phone/direction' && req.method === 'POST') {

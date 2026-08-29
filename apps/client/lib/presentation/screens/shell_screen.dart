@@ -4,10 +4,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/services/remote_control_service.dart';
 import '../providers/app_providers.dart';
 import '../providers/auth_provider.dart';
+import '../providers/phone_control_provider.dart';
 import 'control_screen.dart';
 import 'settings_screen.dart';
 import 'setup_screen.dart';
@@ -42,11 +44,14 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
   }
 
   Future<void> _bootstrapShell() async {
-    ref.read(remoteControlServiceProvider).connect();
+    await ref.read(phoneControlProvider.notifier).ensureDeviceReady();
+    await ref.read(remoteControlServiceProvider).connect();
     if (!Platform.isAndroid) return;
 
     final platform = ref.read(platformServiceProvider);
-    await platform.startBackgroundService();
+    final deviceId = ref.read(phoneControlProvider).deviceId;
+    final apiBase = AppConfig.apiBase;
+    await platform.startBackgroundService(apiBase: apiBase, deviceId: deviceId);
     await platform.showFloatingBubble('MindTouch active');
   }
 

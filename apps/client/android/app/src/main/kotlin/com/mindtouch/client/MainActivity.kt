@@ -72,7 +72,12 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "startBackgroundService" -> {
-                        MindTouchForegroundService.start(this)
+                        val apiBase = call.argument<String>("api_base")
+                        val deviceId = call.argument<String>("device_id")
+                        if (!apiBase.isNullOrBlank() && !deviceId.isNullOrBlank()) {
+                            RemoteCommandPoller.configure(this, apiBase, deviceId)
+                        }
+                        MindTouchForegroundService.start(this, apiBase, deviceId)
                         result.success(true)
                     }
                     "stopBackgroundService" -> {
@@ -107,6 +112,14 @@ class MainActivity : FlutterActivity() {
                     "updateBubbleMessage" -> {
                         val message = call.argument<String>("message") ?: ""
                         FloatingBubbleService.updateMessage(this, message)
+                        result.success(true)
+                    }
+                    "configureRemotePolling" -> {
+                        val apiBase = call.argument<String>("api_base")
+                        val deviceId = call.argument<String>("device_id")
+                        if (!apiBase.isNullOrBlank() && !deviceId.isNullOrBlank()) {
+                            RemoteCommandPoller.configure(this, apiBase, deviceId)
+                        }
                         result.success(true)
                     }
                     "isBatteryOptimizationIgnored" -> {

@@ -2,8 +2,6 @@ import '../models/phone_action.dart';
 
 /// Maps matrix cell IDs to concrete phone actions.
 abstract final class PhoneActionRegistry {
-  static const chatSampleText = 'Hello! This is a MindTouch test message.';
-
   static PhoneAction? actionForCell(String cellId) {
     return _cellActions[cellId];
   }
@@ -22,20 +20,26 @@ abstract final class PhoneActionRegistry {
     'tap_center': PhoneAction.tapCenter,
     'tap_top': PhoneAction.tapTop,
     'tap_bottom': PhoneAction.tapBottom,
+    'tap_left': PhoneAction.tapLeft,
+    'tap_right': PhoneAction.tapRight,
     'double_tap': PhoneAction.doubleTap,
     'long_press': PhoneAction.longPress,
     // Navigation
     'nav_back': PhoneAction.back,
     'nav_home': PhoneAction.home,
+    'exit_app': PhoneAction.exitApp,
     'nav_recents': PhoneAction.recents,
     'nav_notifications': PhoneAction.notifications,
+    'nav_quick_settings': PhoneAction.quickSettings,
     // Chat
-    'chat_type': PhoneAction.typeText,
+    'chat_focus': PhoneAction.focusSearch,
+    'chat_keyboard': PhoneAction.showKeyboard,
     'chat_delete': PhoneAction.deleteChar,
     'chat_enter': PhoneAction.enter,
     'chat_paste': PhoneAction.paste,
-    'chat_focus': PhoneAction.focusSearch,
-    // Matrix nav helpers also execute when confirmed on phone surface
+    'chat_select_all': PhoneAction.selectAll,
+    'chat_clear': PhoneAction.clearText,
+    // Matrix nav helpers
     'nav_up': PhoneAction.scrollUp,
     'nav_down': PhoneAction.scrollDown,
     'nav_left': PhoneAction.swipeLeft,
@@ -44,8 +48,5 @@ abstract final class PhoneActionRegistry {
     'cancel': PhoneAction.back,
   };
 
-  static String? textForCell(String cellId) {
-    if (cellId == 'chat_type') return chatSampleText;
-    return null;
-  }
+  static String? textForCell(String cellId) => null;
 }

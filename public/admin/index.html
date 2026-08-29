@@ -26,10 +26,18 @@
     #log{height:420px;overflow-y:auto;font-family:monospace;font-size:.78rem;background:var(--void);border-radius:12px;padding:12px;border:1px solid var(--border)}
     .phone-chip{padding:10px 14px;border-radius:12px;background:var(--elevated);border:1px solid var(--border);margin-bottom:8px;cursor:pointer}
     .phone-chip.active{border-color:var(--primary)}
+    .phone-chip.live{border-color:rgba(0,245,212,.55)}
+    .phone-chip.stale{opacity:.55}
+    .live-tag{color:var(--primary);font-size:.7rem;font-weight:800;margin-left:6px}
     .actions{display:flex;flex-wrap:wrap;gap:8px}
+    .exit-card{border-color:rgba(255,71,87,.45);background:linear-gradient(135deg,rgba(255,71,87,.12),rgba(19,26,46,.95))}
+    button.exit{background:linear-gradient(135deg,#ff6b6b,var(--danger));color:#fff;border:none;font-size:1rem;padding:14px 20px}
     .category-title{font-size:.75rem;color:var(--muted);margin:12px 0 8px;font-weight:800}
     input[type=text]{width:100%}
     label{font-size:.75rem;color:var(--muted);display:block;margin-bottom:6px}
+    .typing-preview{font-family:monospace;font-size:1.1rem;min-height:48px;padding:14px;border-radius:12px;background:var(--void);border:1px dashed var(--border);margin-top:10px;word-break:break-all}
+    .typing-preview.active{border-color:var(--primary);color:var(--primary)}
+    .chat-card{border-color:rgba(155,93,229,.45)}
   </style>
 </head>
 <body>
@@ -40,7 +48,13 @@
   <main>
     <div class="grid">
       <div>
-        <div class="card"><h2>Connected Phones</h2><div id="phonesList"><div class="phone-chip">Waiting for phone… Open MindTouch app on Android</div></div></div>
+        <div class="card"><h2>Connected Phones</h2><div id="phonesList"><div class="phone-chip">Waiting for phone… Open MindTouch app on Android</div></div>
+          <label style="margin-top:12px">Target Phone</label>
+          <select id="deviceSelect" style="width:100%"><option value="">Auto (most recent live phone)</option></select>
+        </div>
+        <div class="card exit-card"><h2>Leave App</h2><p class="hint">Exit whatever app is open on the phone and return to the home screen.</p>
+          <div class="row"><button class="exit" onclick="sendAction('exit_app')">⎋ Exit App</button></div>
+        </div>
         <div class="card"><h2>AI Directions</h2><p class="hint">Same signals the BCI model sends.</p>
           <div class="row">
             <button onclick="sendDirection('up')">↑ Up</button><button onclick="sendDirection('down')">↓ Down</button>
@@ -51,14 +65,24 @@
         <div class="card"><h2>All Phone Actions</h2><div id="actionGroups"></div></div>
       </div>
       <div>
-        <div class="card"><h2>Send Command</h2>
-          <label>Target Phone</label><select id="deviceSelect" style="width:100%;margin-bottom:12px"><option value="">Auto</option></select>
-          <label>Custom Text</label><input type="text" id="customText" value="Hello! MindTouch test message 👋" />
-          <button class="primary" style="width:100%;margin-top:12px" onclick="sendAction('type_text')">Send Type Text</button>
+        <div class="card chat-card"><h2>Live Chat Typing</h2>
+          <p class="hint">Opens the keyboard on the phone and types character-by-character from your model. The user sees each letter appear live.</p>
+          <label>Message from model</label>
+          <input type="text" id="chatMessage" placeholder="Type what the BCI model wants to say…" />
+          <div class="typing-preview" id="typingPreview">Waiting to type…</div>
+          <div class="row">
+            <button class="primary" onclick="typeLiveMessage()">⌨ Type Live</button>
+            <button onclick="sendAction('show_keyboard')">Show Keyboard</button>
+            <button onclick="sendAction('clear_text')">Clear</button>
+            <button onclick="sendAction('enter')">Send</button>
+          </div>
         </div>
         <div class="card"><h2>Quick Chat</h2><div class="row">
-          <button onclick="sendAction('focus_search')">Focus</button><button onclick="sendAction('type_text')">Type</button>
-          <button onclick="sendAction('enter')">Send</button><button onclick="sendAction('delete')">Delete</button>
+          <button onclick="sendAction('focus_search')">Focus</button>
+          <button onclick="sendAction('show_keyboard')">Keyboard</button>
+          <button onclick="sendAction('delete')">Delete</button>
+          <button onclick="sendAction('paste')">Paste</button>
+          <button onclick="sendAction('select_all')">Select All</button>
         </div></div>
         <div class="card"><h2>Activity Log</h2><div id="log"></div></div>
       </div>
@@ -86,10 +110,25 @@
         const select = document.getElementById('deviceSelect');
         if (!phones.length) {
           list.innerHTML = '<div class="phone-chip">No phone yet — run MindTouch app on Android</div>';
+          selectedDevice = '';
           return;
         }
-        list.innerHTML = phones.map(p => `<div class="phone-chip ${p.device_id===selectedDevice?'active':''}" onclick="selectPhone('${p.device_id}')">${p.name}<br><small style="color:var(--muted)">${p.device_id}</small></div>`).join('');
-        select.innerHTML = '<option value="">Auto</option>' + phones.map(p => `<option value="${p.device_id}">${p.name}</option>`).join('');
+
+        const livePhone = phones.find(p => p.live);
+        const selectedStillLive = phones.some(p => p.device_id === selectedDevice && p.live);
+        if (livePhone && (!selectedDevice || !selectedStillLive)) {
+          selectedDevice = livePhone.device_id;
+        }
+
+        list.innerHTML = phones.map(p => {
+          const live = p.live ? '<span class="live-tag">LIVE</span>' : '<span class="live-tag" style="color:var(--muted)">offline</span>';
+          const cls = ['phone-chip', p.device_id === selectedDevice ? 'active' : '', p.live ? 'live' : 'stale'].filter(Boolean).join(' ');
+          return `<div class="${cls}" onclick="selectPhone('${p.device_id}')">${p.name}${live}<br><small style="color:var(--muted)">${p.device_id}</small></div>`;
+        }).join('');
+
+        select.innerHTML = '<option value="">Auto (most recent live phone)</option>' +
+          phones.map(p => `<option value="${p.device_id}">${p.name}${p.live ? ' (live)' : ''}</option>`).join('');
+        if (selectedDevice) select.value = selectedDevice;
       } catch (e) { log('Phone refresh failed'); }
     }
 
@@ -105,11 +144,36 @@
     function selectPhone(id) { selectedDevice = id; document.getElementById('deviceSelect').value = id; refreshPhones(); }
 
     async function sendAction(action) {
-      const text = action === 'type_text' ? document.getElementById('customText').value : undefined;
+      const textActions = ['type_text', 'type_char', 'type_message'];
+      const text = textActions.includes(action) ? document.getElementById('chatMessage')?.value : undefined;
       const device_id = selectedDevice || document.getElementById('deviceSelect').value || undefined;
       const r = await api('/command', { method: 'POST', body: JSON.stringify({ action, text, device_id }) });
-      log(r.status === 'sent' ? `✓ ${action}` : `✗ ${r.message || 'failed'}`);
+      log(r.status === 'sent' ? `✓ ${action} → ${r.device_id?.slice(0, 8) ?? 'phone'}…` : `✗ ${r.message || 'failed'}`);
       refreshLogs();
+    }
+
+    async function typeLiveMessage() {
+      const text = document.getElementById('chatMessage').value;
+      if (!text.trim()) { log('✗ Enter a message first'); return; }
+      const device_id = selectedDevice || document.getElementById('deviceSelect').value || undefined;
+      document.getElementById('typingPreview').textContent = '';
+      document.getElementById('typingPreview').classList.add('active');
+      const r = await api('/type', { method: 'POST', body: JSON.stringify({ text, device_id }) });
+      log(r.status === 'sent' ? `✓ typing live (${text.length} chars)` : `✗ ${r.message || 'failed'}`);
+      refreshLogs();
+    }
+
+    async function refreshTypingPreview() {
+      const device_id = selectedDevice || document.getElementById('deviceSelect').value;
+      if (!device_id) return;
+      try {
+        const data = await api(`/typing?device_id=${encodeURIComponent(device_id)}`);
+        const el = document.getElementById('typingPreview');
+        if (data.preview) {
+          el.textContent = data.preview;
+          el.classList.add('active');
+        }
+      } catch (_) {}
     }
 
     async function sendDirection(direction) {
@@ -144,6 +208,7 @@
     loadActions(); checkHealth(); refreshPhones(); refreshLogs();
     setInterval(refreshPhones, 3000);
     setInterval(refreshLogs, 4000);
+    setInterval(refreshTypingPreview, 500);
     setInterval(checkHealth, 15000);
   </script>
 </body>

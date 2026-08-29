@@ -76,30 +76,47 @@ abstract final class MatrixLayouts {
     );
   }
 
-  /// Full phone control matrix — every test case mapped to a cell.
+  /// Full phone control matrix — every action mapped to a cell.
   static MatrixScreen phoneControl() {
     return const MatrixScreen(
       title: 'Phone Control',
       subtitle: 'Imagine a direction, confirm to execute',
       breadcrumb: ['Phone', 'All Actions'],
       cells: [
-        MatrixCell(id: 'scroll_up', label: 'Scroll Up', subtitle: 'Scroll content up', icon: Icons.arrow_upward_rounded),
-        MatrixCell(id: 'scroll_down', label: 'Scroll Down', subtitle: 'Scroll content down', icon: Icons.arrow_downward_rounded),
+        MatrixCell(id: 'scroll_up', label: 'Scroll Up', subtitle: 'Scroll up', icon: Icons.arrow_upward_rounded),
+        MatrixCell(id: 'scroll_down', label: 'Scroll Down', subtitle: 'Scroll down', icon: Icons.arrow_downward_rounded),
         MatrixCell(id: 'scroll_left', label: 'Scroll Left', subtitle: 'Scroll left', icon: Icons.arrow_back_rounded),
         MatrixCell(id: 'scroll_right', label: 'Scroll Right', subtitle: 'Scroll right', icon: Icons.arrow_forward_rounded),
         MatrixCell(id: 'swipe_up', label: 'Swipe Up', subtitle: 'Fast swipe up', icon: Icons.swipe_up_rounded),
         MatrixCell(id: 'swipe_down', label: 'Swipe Down', subtitle: 'Fast swipe down', icon: Icons.swipe_down_rounded),
+        MatrixCell(id: 'swipe_left', label: 'Swipe Left', subtitle: 'Fast swipe left', icon: Icons.swipe_left_rounded),
+        MatrixCell(id: 'swipe_right', label: 'Swipe Right', subtitle: 'Fast swipe right', icon: Icons.swipe_right_rounded),
         MatrixCell(id: 'tap_center', label: 'Tap', subtitle: 'Tap center', icon: Icons.touch_app_rounded),
+        MatrixCell(id: 'tap_top', label: 'Tap Top', subtitle: 'Upper area', icon: Icons.vertical_align_top_rounded),
+        MatrixCell(id: 'tap_bottom', label: 'Tap Bottom', subtitle: 'Lower area', icon: Icons.vertical_align_bottom_rounded),
+        MatrixCell(id: 'tap_left', label: 'Tap Left', subtitle: 'Left side', icon: Icons.align_horizontal_left_rounded),
+        MatrixCell(id: 'tap_right', label: 'Tap Right', subtitle: 'Right side', icon: Icons.align_horizontal_right_rounded),
         MatrixCell(id: 'double_tap', label: 'Double Tap', subtitle: 'Double tap', icon: Icons.ads_click_rounded),
         MatrixCell(id: 'long_press', label: 'Long Press', subtitle: 'Hold press', icon: Icons.back_hand_rounded),
         MatrixCell(id: 'nav_back', label: 'Back', subtitle: 'Android back', icon: Icons.arrow_back_ios_new_rounded),
         MatrixCell(id: 'nav_home', label: 'Home', subtitle: 'Home screen', icon: Icons.home_rounded),
+        MatrixCell(
+          id: 'exit_app',
+          label: 'Exit App',
+          subtitle: 'Leave any app',
+          icon: Icons.exit_to_app_rounded,
+          accentColor: Color(0xFFFF7043),
+        ),
         MatrixCell(id: 'nav_recents', label: 'Recents', subtitle: 'App switcher', icon: Icons.apps_rounded),
-        MatrixCell(id: 'chat_focus', label: 'Focus Chat', subtitle: 'Focus input field', icon: Icons.chat_bubble_outline_rounded),
-        MatrixCell(id: 'chat_type', label: 'Type Message', subtitle: 'Type test message', icon: Icons.keyboard_rounded),
-        MatrixCell(id: 'chat_enter', label: 'Send', subtitle: 'Enter / send', icon: Icons.send_rounded),
+        MatrixCell(id: 'nav_notifications', label: 'Notifications', subtitle: 'Notification shade', icon: Icons.notifications_outlined),
+        MatrixCell(id: 'nav_quick_settings', label: 'Quick Settings', subtitle: 'Quick settings', icon: Icons.settings_rounded),
+        MatrixCell(id: 'chat_focus', label: 'Focus Chat', subtitle: 'Focus input', icon: Icons.chat_bubble_outline_rounded),
+        MatrixCell(id: 'chat_keyboard', label: 'Show Keyboard', subtitle: 'Open keyboard', icon: Icons.keyboard_rounded),
         MatrixCell(id: 'chat_delete', label: 'Delete', subtitle: 'Delete char', icon: Icons.backspace_rounded),
+        MatrixCell(id: 'chat_enter', label: 'Send', subtitle: 'Enter / send', icon: Icons.send_rounded),
         MatrixCell(id: 'chat_paste', label: 'Paste', subtitle: 'Paste clipboard', icon: Icons.content_paste_rounded),
+        MatrixCell(id: 'chat_select_all', label: 'Select All', subtitle: 'Select all text', icon: Icons.select_all_rounded),
+        MatrixCell(id: 'chat_clear', label: 'Clear', subtitle: 'Clear text field', icon: Icons.clear_rounded),
         MatrixCell(
           id: 'cancel',
           label: 'Back',

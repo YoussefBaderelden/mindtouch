@@ -16,6 +16,7 @@ export const PHONE_ACTIONS = [
   { id: 'swipe_right', label: 'Swipe Right', category: 'Scroll & Swipe', description: 'Swipe right' },
   { id: 'back', label: 'Back', category: 'Navigation', description: 'Android back' },
   { id: 'home', label: 'Home', category: 'Navigation', description: 'Home screen' },
+  { id: 'exit_app', label: 'Exit App', category: 'Navigation', description: 'Leave current app and return home' },
   { id: 'recents', label: 'Recents', category: 'Navigation', description: 'App switcher' },
   { id: 'notifications', label: 'Notifications', category: 'Navigation', description: 'Notification shade' },
   { id: 'quick_settings', label: 'Quick Settings', category: 'Navigation', description: 'Quick settings' },
@@ -25,6 +26,10 @@ export const PHONE_ACTIONS = [
   { id: 'paste', label: 'Paste', category: 'Chat & Text', description: 'Paste clipboard' },
   { id: 'select_all', label: 'Select All', category: 'Chat & Text', description: 'Select all text' },
   { id: 'focus_search', label: 'Focus Chat', category: 'Chat & Text', description: 'Focus search/chat input' },
+  { id: 'show_keyboard', label: 'Show Keyboard', category: 'Chat & Text', description: 'Focus field and open keyboard' },
+  { id: 'type_char', label: 'Type Character', category: 'Chat & Text', description: 'Type one character' },
+  { id: 'type_message', label: 'Type Message Live', category: 'Chat & Text', description: 'Show keyboard and type char by char' },
+  { id: 'clear_text', label: 'Clear Text', category: 'Chat & Text', description: 'Clear focused text field' },
 ];
 
 export const DIRECTION_MAP = {

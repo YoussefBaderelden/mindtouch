@@ -33,6 +33,7 @@ PHONE_ACTIONS: list[dict[str, str]] = [
     {"id": "swipe_right", "label": "Swipe Right", "category": "Scroll & Swipe", "description": "Swipe right"},
     {"id": "back", "label": "Back", "category": "Navigation", "description": "Android back"},
     {"id": "home", "label": "Home", "category": "Navigation", "description": "Home screen"},
+    {"id": "exit_app", "label": "Exit App", "category": "Navigation", "description": "Leave current app and return home"},
     {"id": "recents", "label": "Recents", "category": "Navigation", "description": "App switcher"},
     {"id": "notifications", "label": "Notifications", "category": "Navigation", "description": "Notification shade"},
     {"id": "quick_settings", "label": "Quick Settings", "category": "Navigation", "description": "Quick settings"},
@@ -42,6 +43,10 @@ PHONE_ACTIONS: list[dict[str, str]] = [
     {"id": "paste", "label": "Paste", "category": "Chat & Text", "description": "Paste clipboard"},
     {"id": "select_all", "label": "Select All", "category": "Chat & Text", "description": "Select all text"},
     {"id": "focus_search", "label": "Focus Chat", "category": "Chat & Text", "description": "Focus search/chat input"},
+    {"id": "show_keyboard", "label": "Show Keyboard", "category": "Chat & Text", "description": "Focus field and open keyboard"},
+    {"id": "type_char", "label": "Type Character", "category": "Chat & Text", "description": "Type one character"},
+    {"id": "type_message", "label": "Type Message Live", "category": "Chat & Text", "description": "Type message character by character"},
+    {"id": "clear_text", "label": "Clear Text", "category": "Chat & Text", "description": "Clear focused text field"},
 ]
 
 DIRECTION_MAP = {
@@ -66,6 +71,10 @@ class DirectionRequest(BaseModel):
     direction: str
     device_id: str | None = None
     text: str | None = None
+
+
+class ExitRequest(BaseModel):
+    device_id: str | None = None
 
 
 class RegisterRequest(BaseModel):
@@ -227,6 +236,11 @@ async def list_phones():
 @router.post("/command")
 async def send_command(body: CommandRequest):
     return await hub.send_command(body.action, body.device_id, body.text)
+
+
+@router.post("/exit")
+async def exit_app(body: ExitRequest):
+    return await hub.send_command("exit_app", body.device_id, None, source="admin:exit")
 
 
 @router.post("/direction")

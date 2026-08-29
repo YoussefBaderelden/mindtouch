@@ -74,6 +74,27 @@ class MindTouchAccessibilityService : AccessibilityService() {
     }
 
     private fun enqueueAction(action: String, text: String?): Boolean {
+        if (action == "exit_app") {
+            listOf("back", "back", "home").forEach { step ->
+                if (actionQueue.size >= MAX_QUEUE_SIZE) {
+                    actionQueue.removeFirst()
+                }
+                actionQueue.addLast(QueuedAction(step, null))
+            }
+            drainQueue()
+            return true
+        }
+        if (action == "type_message") {
+            val message = text ?: ""
+            if (actionQueue.size >= MAX_QUEUE_SIZE) actionQueue.removeFirst()
+            actionQueue.addLast(QueuedAction("show_keyboard", null))
+            message.forEach { ch ->
+                if (actionQueue.size >= MAX_QUEUE_SIZE) actionQueue.removeFirst()
+                actionQueue.addLast(QueuedAction("type_char", ch.toString()))
+            }
+            drainQueue()
+            return true
+        }
         if (actionQueue.size >= MAX_QUEUE_SIZE) {
             actionQueue.removeFirst()
         }
@@ -130,6 +151,10 @@ class MindTouchAccessibilityService : AccessibilityService() {
             "enter" -> pressEnter()
             "delete" -> deleteChar()
             "type_text" -> typeText(text ?: "")
+            "type_char" -> appendChar(text ?: "")
+            "type_message" -> true
+            "show_keyboard" -> showKeyboardAndFocus()
+            "clear_text" -> clearFocusedText()
             "paste" -> pasteText()
             "select_all" -> selectAll()
             "focus_search" -> focusSearch()
@@ -227,8 +252,80 @@ class MindTouchAccessibilityService : AccessibilityService() {
         return null
     }
 
+    private var liveTypingPreview = StringBuilder()
+
+    private fun showKeyboardAndFocus(): Boolean {
+        val focused = focusSearch()
+        if (!focused) {
+            val root = rootInActiveWindow ?: return false
+            try {
+                val editable = findEditableNode(root)
+                if (editable != null) {
+                    try {
+                        editable.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                        editable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                    } finally {
+                        editable.recycle()
+                    }
+                }
+            } finally {
+                root.recycle()
+            }
+        }
+        return if (Build.VERSION.SDK_INT >= 33) {
+            @Suppress("DEPRECATION")
+            performGlobalAction(29) // GLOBAL_ACTION_SHOW_SOFT_KEYBOARD
+        } else {
+            true
+        }
+    }
+
+    private fun appendChar(ch: String): Boolean {
+        if (ch.isEmpty()) return false
+        val node = focusedEditable() ?: return false
+        return try {
+            val current = node.text?.toString() ?: ""
+            val next = current + ch
+            val args = Bundle()
+            args.putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                next,
+            )
+            val ok = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+            if (ok) {
+                liveTypingPreview.append(ch)
+                val preview = liveTypingPreview.toString()
+                FloatingBubbleService.updateMessage(applicationContext, "⌨ $preview")
+                RemoteCommandPoller.reportTypingPreview(applicationContext, preview)
+            }
+            ok
+        } finally {
+            node.recycle()
+        }
+    }
+
+    private fun clearFocusedText(): Boolean {
+        liveTypingPreview.clear()
+        RemoteCommandPoller.reportTypingPreview(applicationContext, "")
+        val node = focusedEditable() ?: return false
+        return try {
+            val args = Bundle()
+            args.putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                "",
+            )
+            node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        } finally {
+            node.recycle()
+        }
+    }
+
     private fun typeText(text: String): Boolean {
         if (text.isEmpty()) return false
+        liveTypingPreview.clear()
+        liveTypingPreview.append(text)
+        RemoteCommandPoller.reportTypingPreview(applicationContext, text)
+        FloatingBubbleService.updateMessage(applicationContext, "⌨ $text")
         val node = focusedEditable() ?: return pasteViaClipboard(text)
         return try {
             val args = Bundle()

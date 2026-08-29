@@ -92,7 +92,22 @@ class PhoneControlNotifier extends Notifier<PhoneControlState> {
     _service = ref.read(phoneControlServiceProvider);
     ref.onDispose(() => _accessibilityPollTimer?.cancel());
     unawaited(_refreshAccessibility());
-    return PhoneControlState(deviceId: _uuid.v4());
+    return const PhoneControlState();
+  }
+
+  /// Stable Android device id — must complete before remote polling starts.
+  Future<void> ensureDeviceReady() async {
+    if (state.deviceId.isNotEmpty) return;
+    try {
+      final profile = await ref.read(platformServiceProvider).getDeviceProfile();
+      var id = profile.deviceId.trim();
+      if (id.isEmpty || id == 'unknown') {
+        id = _uuid.v4();
+      }
+      state = state.copyWith(deviceId: id);
+    } catch (_) {
+      state = state.copyWith(deviceId: _uuid.v4());
+    }
   }
 
   Future<void> _refreshAccessibility() async {
@@ -129,6 +144,38 @@ class PhoneControlNotifier extends Notifier<PhoneControlState> {
     String source = 'local',
     String? dedupeKey,
   }) async {
+    return _runExecute(
+      actionId: action.id,
+      action: action,
+      text: text,
+      source: source,
+      dedupeKey: dedupeKey,
+    );
+  }
+
+  Future<bool> executeRawAction(
+    String actionId, {
+    String? text,
+    String source = 'admin',
+    String? dedupeKey,
+  }) async {
+    final action = PhoneAction.fromId(actionId);
+    return _runExecute(
+      actionId: actionId,
+      action: action,
+      text: text,
+      source: source,
+      dedupeKey: dedupeKey,
+    );
+  }
+
+  Future<bool> _runExecute({
+    required String actionId,
+    PhoneAction? action,
+    String? text,
+    String source = 'local',
+    String? dedupeKey,
+  }) async {
     if (!state.accessibilityEnabled) {
       await _refreshAccessibility();
     }
@@ -139,13 +186,15 @@ class PhoneControlNotifier extends Notifier<PhoneControlState> {
     );
 
     final success = await _pipeline.run(
-      action: action,
-      dedupeKey: dedupeKey,
-      execute: () => _service.execute(action, text: text),
+      action: action ?? PhoneAction.tapCenter,
+      dedupeKey: dedupeKey ?? actionId,
+      execute: () => action != null
+          ? _service.execute(action, text: text)
+          : _service.executeRaw(actionId, text: text),
     );
 
     final log = PhoneExecutionLog(
-      action: action,
+      action: action ?? PhoneAction.fromId(actionId) ?? PhoneAction.tapCenter,
       success: success,
       timestamp: DateTime.now(),
       text: text,
@@ -159,7 +208,9 @@ class PhoneControlNotifier extends Notifier<PhoneControlState> {
       pendingActions: (state.pendingActions - 1).clamp(0, 999),
     );
 
-    final bubbleMsg = success ? '${action.label} ✓' : '${action.label} failed';
+    final bubbleMsg = success
+        ? '${action?.label ?? actionId} ✓'
+        : '${action?.label ?? actionId} failed';
     unawaited(ref.read(platformServiceProvider).updateBubbleMessage(bubbleMsg));
 
     return success;

@@ -28,14 +28,19 @@ class AndroidPhoneControlService implements PhoneControlService {
   }
 
   @override
-  Future<bool> execute(PhoneAction action, {String? text}) async {
+  Future<bool> execute(PhoneAction action, {String? text}) {
+    return executeRaw(action.id, text: text);
+  }
+
+  @override
+  Future<bool> executeRaw(String actionId, {String? text}) async {
     if (!Platform.isAndroid) {
-      debugPrint('[MindTouch] Phone action (stub): ${action.id}');
+      debugPrint('[MindTouch] Phone action (stub): $actionId');
       return true;
     }
     try {
       return await _channel.invokeMethod<bool>('executeAction', {
-            'action': action.id,
+            'action': actionId,
             'text': text,
           }) ??
           false;
@@ -54,8 +59,13 @@ class StubPhoneControlService implements PhoneControlService {
   Future<void> openAccessibilitySettings() async {}
 
   @override
-  Future<bool> execute(PhoneAction action, {String? text}) async {
-    debugPrint('[MindTouch stub] ${action.id}${text != null ? ': $text' : ''}');
+  Future<bool> execute(PhoneAction action, {String? text}) {
+    return executeRaw(action.id, text: text);
+  }
+
+  @override
+  Future<bool> executeRaw(String actionId, {String? text}) async {
+    debugPrint('[MindTouch stub] $actionId${text != null ? ': $text' : ''}');
     return true;
   }
 }

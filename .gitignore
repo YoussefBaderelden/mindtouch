@@ -4,6 +4,7 @@ node_modules/
 .env.local
 .env*.local
 .mindtouch-auth.json
+dist/
 __pycache__/
 *.pyc
 .dart_tool/

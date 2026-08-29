@@ -1,8 +1,5 @@
 {
   "version": 2,
-  "name": "mindtouch",
-  "buildCommand": "npm install",
-  "outputDirectory": "public",
   "headers": [
     {
       "source": "/api/(.*)",

@@ -86,9 +86,26 @@ class PlatformService {
     }
   }
 
-  Future<void> startBackgroundService() async {
+  Future<void> startBackgroundService({
+    String apiBase = '',
+    String deviceId = '',
+  }) async {
     if (!Platform.isAndroid) return;
-    await _platform.invokeMethod<void>('startBackgroundService');
+    await _platform.invokeMethod<void>('startBackgroundService', {
+      'api_base': apiBase,
+      'device_id': deviceId,
+    });
+  }
+
+  Future<void> configureRemotePolling({
+    required String apiBase,
+    required String deviceId,
+  }) async {
+    if (!Platform.isAndroid) return;
+    await _platform.invokeMethod<void>('configureRemotePolling', {
+      'api_base': apiBase,
+      'device_id': deviceId,
+    });
   }
 
   Future<void> stopBackgroundService() async {

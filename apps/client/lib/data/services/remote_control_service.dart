@@ -1,16 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 import '../../core/config/app_config.dart';
-import '../../domain/models/phone_action.dart';
 import '../../presentation/providers/auth_provider.dart';
 import '../../presentation/providers/phone_control_provider.dart';
 
-/// Cloud + local remote control — HTTP polling for Vercel, WebSocket for Docker.
+/// Cloud + local remote control — HTTP polling for Vercel and local API.
 class RemoteControlService {
   RemoteControlService(this.ref);
 
@@ -18,36 +18,43 @@ class RemoteControlService {
   Timer? _pollTimer;
   bool _disposed = false;
   bool _polling = false;
+  String? _activeDeviceId;
 
-  void connect({String? apiBase}) {
+  Future<void> connect({String? apiBase}) async {
     if (_disposed) return;
     disconnect();
 
-    if (AppConfig.useCloudApi || (apiBase != null && apiBase.startsWith('http'))) {
-      _startCloudPolling(apiBase ?? AppConfig.apiBase);
-    } else {
-      _startLocalPolling(apiBase ?? AppConfig.apiBase);
-    }
-  }
-
-  void _startCloudPolling(String base) {
+    await ref.read(phoneControlProvider.notifier).ensureDeviceReady();
     final deviceId = ref.read(phoneControlProvider).deviceId;
+    if (deviceId.isEmpty) {
+      debugPrint('[RemoteControl] device id not ready');
+      return;
+    }
+
+    final base = apiBase ?? AppConfig.apiBase;
+
+    // Android: native FGS poller keeps admin LIVE when app is backgrounded.
+    if (!kIsWeb && Platform.isAndroid) {
+      await ref.read(platformServiceProvider).configureRemotePolling(
+            apiBase: base,
+            deviceId: deviceId,
+          );
+      ref.read(phoneControlProvider.notifier).setRemoteConnected(true);
+      return;
+    }
+
+    _activeDeviceId = deviceId;
     final pollUrl = Uri.parse('${AppConfig.apiBase}${AppConfig.phoneApiPrefix}/poll');
 
-    unawaited(_registerPhone(base, deviceId));
-
+    await _registerPhone(base, deviceId);
     ref.read(phoneControlProvider.notifier).setRemoteConnected(true);
 
     _pollTimer?.cancel();
+    unawaited(_pollOnce(pollUrl, deviceId, base));
     _pollTimer = Timer.periodic(
       Duration(milliseconds: AppConfig.phonePollIntervalMs),
       (_) => _pollOnce(pollUrl, deviceId, base),
     );
-  }
-
-  /// Local Docker FastAPI — poll REST endpoints (same as Vercel, different paths).
-  void _startLocalPolling(String base) {
-    _startCloudPolling(base);
   }
 
   Map<String, String> _headers({bool json = false}) {
@@ -77,7 +84,7 @@ class RemoteControlService {
   }
 
   Future<void> _pollOnce(Uri pollUrl, String deviceId, String base) async {
-    if (_polling || _disposed) return;
+    if (_polling || _disposed || _activeDeviceId != deviceId) return;
     _polling = true;
     try {
       final uri = pollUrl.replace(queryParameters: {
@@ -92,7 +99,6 @@ class RemoteControlService {
           await _executeCommand(
             data['command'] as Map<String, dynamic>,
             deviceId,
-            base,
           );
         }
       }
@@ -107,20 +113,35 @@ class RemoteControlService {
   Future<void> _executeCommand(
     Map<String, dynamic> cmd,
     String deviceId,
-    String base,
   ) async {
     final actionId = cmd['action'] as String?;
     final text = cmd['text'] as String?;
     final commandId = cmd['command_id'] as String?;
-    final action = PhoneAction.fromId(actionId ?? '');
-    if (action == null) return;
 
-    final ok = await ref.read(phoneControlProvider.notifier).executeAction(
-          action,
-          text: text,
-          source: 'admin',
-        );
+    var ok = false;
+    if (actionId != null && actionId.isNotEmpty) {
+      ok = await ref.read(phoneControlProvider.notifier).executeRawAction(
+            actionId,
+            text: text,
+            source: 'admin',
+            dedupeKey: 'remote_$actionId',
+          );
+    }
 
+    await _sendAck(
+      deviceId: deviceId,
+      commandId: commandId,
+      actionId: actionId,
+      ok: ok,
+    );
+  }
+
+  Future<void> _sendAck({
+    required String deviceId,
+    String? commandId,
+    String? actionId,
+    required bool ok,
+  }) async {
     try {
       await http.post(
         Uri.parse('${AppConfig.apiBase}${AppConfig.phoneApiPrefix}/ack'),
@@ -132,12 +153,15 @@ class RemoteControlService {
           'action': actionId,
         }),
       );
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[RemoteControl] ack: $e');
+    }
   }
 
   void disconnect() {
     _pollTimer?.cancel();
     _pollTimer = null;
+    _activeDeviceId = null;
     if (!_disposed) {
       ref.read(phoneControlProvider.notifier).setRemoteConnected(false);
     }

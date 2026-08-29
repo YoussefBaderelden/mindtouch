@@ -22,6 +22,7 @@ enum PhoneAction {
 
   back('back', 'Back', 'Android back button'),
   home('home', 'Home', 'Go to home screen'),
+  exitApp('exit_app', 'Exit App', 'Leave current app and return home'),
   recents('recents', 'Recents', 'Open app switcher'),
   notifications('notifications', 'Notifications', 'Open notification shade'),
   quickSettings('quick_settings', 'Quick Settings', 'Open quick settings'),
@@ -31,7 +32,11 @@ enum PhoneAction {
   enter('enter', 'Enter / Send', 'Press enter or send'),
   paste('paste', 'Paste', 'Paste from clipboard'),
   selectAll('select_all', 'Select All', 'Select all text'),
-  focusSearch('focus_search', 'Focus Search', 'Focus search or chat input');
+  focusSearch('focus_search', 'Focus Search', 'Focus search or chat input'),
+  showKeyboard('show_keyboard', 'Show Keyboard', 'Focus field and open keyboard'),
+  typeChar('type_char', 'Type Character', 'Type one character'),
+  typeMessage('type_message', 'Type Message Live', 'Type message character by character'),
+  clearText('clear_text', 'Clear Text', 'Clear the focused text field');
 
   const PhoneAction(this.id, this.label, this.description);
 
@@ -78,6 +83,7 @@ enum PhoneAction {
           'Scroll & Swipe',
         PhoneAction.back ||
         PhoneAction.home ||
+        PhoneAction.exitApp ||
         PhoneAction.recents ||
         PhoneAction.notifications ||
         PhoneAction.quickSettings =>
@@ -85,5 +91,8 @@ enum PhoneAction {
         _ => 'Chat & Text',
       };
 
-  bool get needsText => this == PhoneAction.typeText;
+  bool get needsText =>
+      this == PhoneAction.typeText ||
+      this == PhoneAction.typeChar ||
+      this == PhoneAction.typeMessage;
 }

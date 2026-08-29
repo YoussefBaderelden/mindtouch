@@ -90,10 +90,18 @@ export async function listPhones() {
       phones.push(typeof raw === 'string' ? JSON.parse(raw) : raw);
     }
   }
-  return phones.map((p) => ({
-    device_id: p.device_id,
-    name: p.name || `Phone ${String(p.device_id).slice(0, 8)}`,
-  }));
+  const now = Date.now();
+  return phones
+    .map((p) => {
+      const lastSeen = p.last_seen || 0;
+      return {
+        device_id: p.device_id,
+        name: p.name || `Phone ${String(p.device_id).slice(0, 8)}`,
+        last_seen: lastSeen,
+        live: now - lastSeen < 30000,
+      };
+    })
+    .sort((a, b) => (b.last_seen || 0) - (a.last_seen || 0));
 }
 
 export async function enqueueCommand(deviceId, command) {
@@ -112,6 +120,24 @@ export async function dequeueCommand(deviceId) {
   const raw = useMemory ? await memRpop(key) : await redis.rpop(key);
   if (!raw) return null;
   return typeof raw === 'string' ? JSON.parse(raw) : raw;
+}
+
+export async function setTypingPreview(deviceId, preview) {
+  const payload = JSON.stringify({ preview: preview ?? '', at: Date.now() });
+  const key = `typing:${deviceId}`;
+  if (useMemory) {
+    await memSet(key, payload);
+  } else {
+    await redis.set(key, payload, { ex: 3600 });
+  }
+}
+
+export async function getTypingPreview(deviceId) {
+  const key = `typing:${deviceId}`;
+  const raw = useMemory ? await memGet(key) : await redis.get(key);
+  if (!raw) return '';
+  const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  return parsed.preview ?? '';
 }
 
 export async function addLog(message, deviceId = null) {
@@ -138,7 +164,8 @@ export async function getLogs(limit = 50) {
 export async function pickTargetDevice(deviceId) {
   if (deviceId) return deviceId;
   const phones = await listPhones();
-  return phones[0]?.device_id ?? null;
+  const live = phones.filter((p) => p.live);
+  return (live[0] || phones[0])?.device_id ?? null;
 }
 
 export async function sendCommand(action, deviceId, text, source = 'admin') {

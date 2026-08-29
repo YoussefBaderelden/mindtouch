@@ -4,4 +4,5 @@ abstract class PhoneControlService {
   Future<bool> isAccessibilityEnabled();
   Future<void> openAccessibilitySettings();
   Future<bool> execute(PhoneAction action, {String? text});
+  Future<bool> executeRaw(String actionId, {String? text});
 }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MindTouch</string>
+    <string name="accessibility_service_description">MindTouch uses accessibility to perform taps, scrolls, swipes, and typing on your behalf based on neural intent. Required for hands-free phone control.</string>
+</resources>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MindTouch Admin — Phone Control</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root { --void:#050810; --surface:#131a2e; --elevated:#1a2340; --primary:#00f5d4; --secondary:#9b5de5; --confirm:#ffd166; --danger:#ff4757; --text:#f0f4ff; --muted:#8b9cc8; --border:#2a3555; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Manrope',sans-serif;background:radial-gradient(ellipse at top,#1a1040 0%,var(--void) 55%);color:var(--text);min-height:100vh}
+    header{padding:24px 32px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(5,8,16,.85);position:sticky;top:0;z-index:10}
+    h1{font-family:'Syne',sans-serif;font-size:1.6rem;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .dot{width:10px;height:10px;border-radius:50%;background:var(--danger);box-shadow:0 0 12px var(--danger)}
+    .dot.live{background:var(--primary);box-shadow:0 0 12px var(--primary);animation:pulse 1.2s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    main{padding:24px 32px 48px;max-width:1400px;margin:0 auto}
+    .grid{display:grid;grid-template-columns:1fr 340px;gap:20px}
+    @media(max-width:1100px){.grid{grid-template-columns:1fr}}
+    .card{background:rgba(19,26,46,.9);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:20px}
+    .card h2{font-family:'Syne',sans-serif;font-size:1rem;margin-bottom:14px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+    button,select,input{font-family:inherit;border:1px solid var(--border);border-radius:12px;padding:10px 14px;background:var(--elevated);color:var(--text);cursor:pointer;font-weight:700;font-size:.85rem}
+    button.primary{background:linear-gradient(135deg,var(--primary),var(--secondary));color:var(--void);border:none}
+    .row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    .hint{font-size:.8rem;color:var(--muted);margin-top:8px;line-height:1.5}
+    #log{height:420px;overflow-y:auto;font-family:monospace;font-size:.78rem;background:var(--void);border-radius:12px;padding:12px;border:1px solid var(--border)}
+    .phone-chip{padding:10px 14px;border-radius:12px;background:var(--elevated);border:1px solid var(--border);margin-bottom:8px;cursor:pointer}
+    .phone-chip.active{border-color:var(--primary)}
+    .actions{display:flex;flex-wrap:wrap;gap:8px}
+    .category-title{font-size:.75rem;color:var(--muted);margin:12px 0 8px;font-weight:800}
+    input[type=text]{width:100%}
+    label{font-size:.75rem;color:var(--muted);display:block;margin-bottom:6px}
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>MindTouch Admin</h1><p style="color:var(--muted);font-size:.85rem;margin-top:4px">Hosted on Vercel — control your phone live</p></div>
+    <div style="display:flex;align-items:center;gap:10px;font-weight:700;font-size:.85rem"><div class="dot live" id="statusDot"></div><span id="statusText">Cloud API Online</span></div>
+  </header>
+  <main>
+    <div class="grid">
+      <div>
+        <div class="card"><h2>Connected Phones</h2><div id="phonesList"><div class="phone-chip">Waiting for phone… Open MindTouch app on Android</div></div></div>
+        <div class="card"><h2>AI Directions</h2><p class="hint">Same signals the BCI model sends.</p>
+          <div class="row">
+            <button onclick="sendDirection('up')">↑ Up</button><button onclick="sendDirection('down')">↓ Down</button>
+            <button onclick="sendDirection('left')">← Left</button><button onclick="sendDirection('right')">→ Right</button>
+            <button class="primary" onclick="sendDirection('confirm')">✓ Confirm</button><button onclick="sendDirection('cancel')">✕ Cancel</button>
+          </div>
+        </div>
+        <div class="card"><h2>All Phone Actions</h2><div id="actionGroups"></div></div>
+      </div>
+      <div>
+        <div class="card"><h2>Send Command</h2>
+          <label>Target Phone</label><select id="deviceSelect" style="width:100%;margin-bottom:12px"><option value="">Auto</option></select>
+          <label>Custom Text</label><input type="text" id="customText" value="Hello! MindTouch test message 👋" />
+          <button class="primary" style="width:100%;margin-top:12px" onclick="sendAction('type_text')">Send Type Text</button>
+        </div>
+        <div class="card"><h2>Quick Chat</h2><div class="row">
+          <button onclick="sendAction('focus_search')">Focus</button><button onclick="sendAction('type_text')">Type</button>
+          <button onclick="sendAction('enter')">Send</button><button onclick="sendAction('delete')">Delete</button>
+        </div></div>
+        <div class="card"><h2>Activity Log</h2><div id="log"></div></div>
+      </div>
+    </div>
+  </main>
+  <script>
+    const API = `${location.origin}/api/phone`;
+    let phones = [], selectedDevice = '', actions = [];
+
+    function log(msg) {
+      const el = document.getElementById('log');
+      el.innerHTML = `<div><span style="color:var(--muted)">${new Date().toLocaleTimeString()}</span> ${msg}</div>` + el.innerHTML;
+    }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(`${API}${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts });
+      return res.json();
+    }
+
+    async function refreshPhones() {
+      try {
+        const data = await api('/phones');
+        phones = data.phones || [];
+        const list = document.getElementById('phonesList');
+        const select = document.getElementById('deviceSelect');
+        if (!phones.length) {
+          list.innerHTML = '<div class="phone-chip">No phone yet — run MindTouch app on Android</div>';
+          return;
+        }
+        list.innerHTML = phones.map(p => `<div class="phone-chip ${p.device_id===selectedDevice?'active':''}" onclick="selectPhone('${p.device_id}')">${p.name}<br><small style="color:var(--muted)">${p.device_id}</small></div>`).join('');
+        select.innerHTML = '<option value="">Auto</option>' + phones.map(p => `<option value="${p.device_id}">${p.name}</option>`).join('');
+      } catch (e) { log('Phone refresh failed'); }
+    }
+
+    async function refreshLogs() {
+      try {
+        const data = await api('/logs');
+        if (data.logs?.length) {
+          document.getElementById('log').innerHTML = data.logs.map(l => `<div><span style="color:var(--muted)">${new Date(l.time).toLocaleTimeString()}</span> ${l.message}</div>`).join('');
+        }
+      } catch (_) {}
+    }
+
+    function selectPhone(id) { selectedDevice = id; document.getElementById('deviceSelect').value = id; refreshPhones(); }
+
+    async function sendAction(action) {
+      const text = action === 'type_text' ? document.getElementById('customText').value : undefined;
+      const device_id = selectedDevice || document.getElementById('deviceSelect').value || undefined;
+      const r = await api('/command', { method: 'POST', body: JSON.stringify({ action, text, device_id }) });
+      log(r.status === 'sent' ? `✓ ${action}` : `✗ ${r.message || 'failed'}`);
+      refreshLogs();
+    }
+
+    async function sendDirection(direction) {
+      const device_id = selectedDevice || document.getElementById('deviceSelect').value || undefined;
+      const r = await api('/direction', { method: 'POST', body: JSON.stringify({ direction, device_id }) });
+      log(r.status === 'sent' ? `✓ AI ${direction}` : `✗ ${r.message || 'failed'}`);
+      refreshLogs();
+    }
+
+    async function loadActions() {
+      const data = await api('/actions');
+      actions = data.actions || [];
+      const groups = {};
+      actions.forEach(a => { (groups[a.category] ||= []).push(a); });
+      document.getElementById('actionGroups').innerHTML = Object.entries(groups).map(([cat, items]) =>
+        `<div class="category-title">${cat}</div><div class="actions">${items.map(a => `<button onclick="sendAction('${a.id}')" title="${a.description}">${a.label}</button>`).join('')}</div>`
+      ).join('');
+    }
+
+    async function checkHealth() {
+      try {
+        const r = await fetch(`${location.origin}/api/health`);
+        const ok = r.ok;
+        document.getElementById('statusDot').classList.toggle('live', ok);
+        document.getElementById('statusText').textContent = ok ? 'Cloud API Online' : 'API Error';
+      } catch (_) {
+        document.getElementById('statusDot').classList.remove('live');
+        document.getElementById('statusText').textContent = 'Offline';
+      }
+    }
+
+    loadActions(); checkHealth(); refreshPhones(); refreshLogs();
+    setInterval(refreshPhones, 3000);
+    setInterval(refreshLogs, 4000);
+    setInterval(checkHealth, 15000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "mindtouch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MindTouch cloud API + admin dashboard (Vercel)",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.34.3"
+  },
+  "devDependencies": {
+    "vercel": "^39.0.0"
+  }
+}

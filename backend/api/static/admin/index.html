@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MindTouch Admin — Phone Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --void: #050810;
+      --deep: #0b1020;
+      --surface: #131a2e;
+      --elevated: #1a2340;
+      --primary: #00f5d4;
+      --secondary: #9b5de5;
+      --confirm: #ffd166;
+      --danger: #ff4757;
+      --text: #f0f4ff;
+      --muted: #8b9cc8;
+      --border: #2a3555;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Manrope', sans-serif;
+      background: radial-gradient(ellipse at top, #1a1040 0%, var(--void) 55%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(5, 8, 16, 0.85);
+    }
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.6rem;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 12px var(--danger);
+    }
+    .dot.live { background: var(--primary); box-shadow: 0 0 12px var(--primary); animation: pulse 1.2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    main { padding: 24px 32px 48px; display: grid; gap: 20px; max-width: 1400px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+    @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: rgba(19, 26, 46, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+    }
+    .card h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      margin-bottom: 14px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    button, select, input {
+      font-family: inherit;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      background: var(--elevated);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.85rem;
+      transition: all .2s;
+    }
+    button:hover { border-color: var(--primary); transform: translateY(-1px); }
+    button.primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: var(--void); border: none; }
+    button.danger { background: rgba(255,71,87,.15); border-color: rgba(255,71,87,.4); color: var(--danger); }
+    button.confirm { background: rgba(255,209,102,.15); border-color: rgba(255,209,102,.4); color: var(--confirm); }
+    button.dir { min-width: 72px; }
+    .category { margin-bottom: 18px; }
+    .category-title { font-size: .75rem; color: var(--muted); margin-bottom: 8px; font-weight: 800; letter-spacing: .8px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .actions button { font-size: .78rem; padding: 8px 12px; }
+    #log {
+      height: 420px;
+      overflow-y: auto;
+      font-family: ui-monospace, monospace;
+      font-size: .78rem;
+      line-height: 1.6;
+      background: var(--void);
+      border-radius: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+    }
+    .log-entry { padding: 4px 0; border-bottom: 1px solid rgba(42,53,85,.4); }
+    .log-time { color: var(--muted); margin-right: 8px; }
+    .phones-list { display: flex; flex-direction: column; gap: 8px; }
+    .phone-chip {
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      font-size: .85rem;
+    }
+    .phone-chip.active { border-color: var(--primary); box-shadow: 0 0 16px rgba(0,245,212,.2); }
+    label { font-size: .75rem; color: var(--muted); display: block; margin-bottom: 6px; font-weight: 700; }
+    .field { margin-bottom: 12px; }
+    input[type=text] { width: 100%; }
+    .hint { font-size: .8rem; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>MindTouch Admin</h1>
+      <p style="color:var(--muted);font-size:.85rem;margin-top:4px">Remote phone control — test every case live</p>
+    </div>
+    <div class="status">
+      <div class="dot" id="wsDot"></div>
+      <span id="wsStatus">Disconnected</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h2>Connected Phones</h2>
+          <div class="phones-list" id="phonesList">
+            <div class="phone-chip">No phones connected — open MindTouch app on Android</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:20px">
+          <h2>AI Directions (BCI Simulation)</h2>
+          <p class="hint">Same directions the AI model outputs — mapped to phone actions automatically.</p>
+          <div class="row" style="margin-top:14px">
+            <button class="dir confirm" onclick="sendDirection('up')">↑ Up</button>
+            <button class="dir confirm" onclick="sendDirection('down')">↓ Down</button>
+            <button class="dir confirm" onclick="sendDirection('left')">← Left</button>
+            <button class="dir confirm" onclick="sendDirection('right')">→ Right</button>
+            <button class="dir primary" onclick="sendDirection('confirm')">✓ Confirm</button>
+            <button class="dir" onclick="sendDirection('cancel')">✕ Cancel</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:20px">
+          <h2>All Phone Actions</h2>
+          <div id="actionGroups"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>Send Command</h2>
+          <div class="field">
+            <label>Target Phone</label>
+            <select id="deviceSelect"><option value="">Auto (first connected)</option></select>
+          </div>
+          <div class="field">
+            <label>Custom Text (for Type Text)</label>
+            <input type="text" id="customText" value="Hello! MindTouch test message 👋" />
+          </div>
+          <button class="primary" style="width:100%;margin-top:8px" onclick="sendTypeText()">Send Type Text</button>
+          <p class="hint">Open WhatsApp/Telegram, tap the chat field, then send Type Text or use Chat actions below.</p>
+        </div>
+
+        <div class="card" style="margin-top:20px">
+          <h2>Quick Chat Test</h2>
+          <div class="row">
+            <button onclick="sendAction('focus_search')">Focus Chat</button>
+            <button onclick="sendAction('type_text')">Type Hello</button>
+            <button onclick="sendAction('enter')">Send</button>
+            <button onclick="sendAction('delete')">Delete</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:20px">
+          <h2>Activity Log</h2>
+          <div id="log"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/v1/phone/control`;
+    const API = `${location.origin}/v1/phone`;
+    let ws = null;
+    let actions = [];
+    let phones = [];
+    let selectedDevice = '';
+
+    function log(msg) {
+      const el = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      el.innerHTML = `<div class="log-entry"><span class="log-time">${time}</span>${msg}</div>` + el.innerHTML;
+    }
+
+    function setConnected(live) {
+      document.getElementById('wsDot').classList.toggle('live', live);
+      document.getElementById('wsStatus').textContent = live ? 'Admin Connected' : 'Disconnected';
+    }
+
+    function connect() {
+      ws = new WebSocket(WS_URL);
+      ws.onopen = () => {
+        setConnected(true);
+        ws.send(JSON.stringify({ type: 'register', role: 'admin', name: 'Web Admin' }));
+        log('Admin connected to control hub');
+      };
+      ws.onclose = () => { setConnected(false); setTimeout(connect, 3000); };
+      ws.onerror = () => setConnected(false);
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'phones_updated') {
+          phones = data.phones || [];
+          renderPhones();
+        }
+        if (data.type === 'log' || data.type === 'log_history') {
+          if (data.type === 'log_history') {
+            data.logs.reverse().forEach(l => log(l.message));
+          } else {
+            log(data.message);
+          }
+        }
+      };
+    }
+
+    function renderPhones() {
+      const list = document.getElementById('phonesList');
+      const select = document.getElementById('deviceSelect');
+      if (!phones.length) {
+        list.innerHTML = '<div class="phone-chip">No phones connected — open MindTouch on Android</div>';
+        select.innerHTML = '<option value="">No phones</option>';
+        return;
+      }
+      list.innerHTML = phones.map(p =>
+        `<div class="phone-chip ${p.device_id === selectedDevice ? 'active' : ''}" onclick="selectPhone('${p.device_id}')">${p.name}<br><small style="color:var(--muted)">${p.device_id}</small></div>`
+      ).join('');
+      select.innerHTML = '<option value="">Auto (first connected)</option>' +
+        phones.map(p => `<option value="${p.device_id}" ${p.device_id === selectedDevice ? 'selected' : ''}>${p.name}</option>`).join('');
+    }
+
+    function selectPhone(id) {
+      selectedDevice = id;
+      document.getElementById('deviceSelect').value = id;
+      renderPhones();
+    }
+
+    function sendWs(payload) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) { log('Not connected'); return; }
+      if (selectedDevice) payload.device_id = selectedDevice;
+      ws.send(JSON.stringify(payload));
+    }
+
+    function sendAction(action) {
+      const text = action === 'type_text' ? document.getElementById('customText').value : undefined;
+      sendWs({ type: 'command', action, text });
+      log(`Sent: ${action}${text ? ' "' + text + '"' : ''}`);
+    }
+
+    function sendDirection(direction) {
+      sendWs({ type: 'direction', direction });
+      log(`AI direction: ${direction}`);
+    }
+
+    function sendTypeText() {
+      sendAction('type_text');
+    }
+
+    async function loadActions() {
+      const res = await fetch(`${API}/actions`);
+      const data = await res.json();
+      actions = data.actions || [];
+      const groups = {};
+      actions.forEach(a => {
+        if (!groups[a.category]) groups[a.category] = [];
+        groups[a.category].push(a);
+      });
+      const container = document.getElementById('actionGroups');
+      container.innerHTML = Object.entries(groups).map(([cat, items]) => `
+        <div class="category">
+          <div class="category-title">${cat}</div>
+          <div class="actions">
+            ${items.map(a => `<button onclick="sendAction('${a.id}')" title="${a.description}">${a.label}</button>`).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    loadActions();
+    connect();
+  </script>
+</body>
+</html>
